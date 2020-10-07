@@ -1,6 +1,12 @@
 /// <reference path="./image-capture.d.ts" />
 
-import { BrowserMultiFormatReader, ChecksumException, FormatException, NotFoundException, Result } from '@zxing/library';
+import {
+  BrowserMultiFormatReader,
+  ChecksumException,
+  FormatException,
+  NotFoundException,
+  Result,
+} from '@zxing/library';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { ResultAndError } from './ResultAndError';
 
@@ -8,7 +14,6 @@ import { ResultAndError } from './ResultAndError';
  * Based on zxing-typescript BrowserCodeReader
  */
 export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader {
-
   /**
    * Exposes _tochAvailable .
    */
@@ -42,7 +47,6 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
     deviceId?: string,
     videoSource?: HTMLVideoElement
   ): Observable<ResultAndError> {
-
     this.reset();
 
     // Keeps the deviceId between scanner resets.
@@ -59,8 +63,12 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
     try {
       // this.decodeFromInputVideoDeviceContinuously(deviceId, videoSource, (result, error) => scan$.next({ result, error }));
       this.getStreamForDevice({ deviceId })
-        .then(stream => this.attachStreamToVideoAndCheckTorch(stream, videoSource))
-        .then(videoElement => this.decodeOnSubject(scan$, videoElement, this.timeBetweenScansMillis));
+        .then((stream) =>
+          this.attachStreamToVideoAndCheckTorch(stream, videoSource)
+        )
+        .then((videoElement) =>
+          this.decodeOnSubject(scan$, videoElement, this.timeBetweenScansMillis)
+        );
     } catch (e) {
       scan$.error(e);
     }
@@ -76,7 +84,9 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * Gets the media stream for certain device.
    * Falls back to any available device if no `deviceId` is defined.
    */
-  public async getStreamForDevice({ deviceId }: Partial<MediaDeviceInfo>): Promise<MediaStream> {
+  public async getStreamForDevice({
+    deviceId,
+  }: Partial<MediaDeviceInfo>): Promise<MediaStream> {
     const constraints = this.getUserMediaConstraints(deviceId);
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     return stream;
@@ -87,10 +97,10 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * Falls back to any environment available device if no `deviceId` is defined.
    */
   public getUserMediaConstraints(deviceId: string): MediaStreamConstraints {
-
-    const video = typeof deviceId === 'undefined'
-      ? { facingMode: { exact: 'environment' } }
-      : { deviceId: { exact: deviceId } };
+    const video =
+      typeof deviceId === 'undefined'
+        ? { facingMode: { exact: 'environment' } }
+        : { deviceId: { exact: deviceId } };
 
     const constraints: MediaStreamConstraints = { video };
 
@@ -101,7 +111,6 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * Enables and disables the device torch.
    */
   public setTorch(on: boolean): void {
-
     if (!this._isTorchAvailable.value) {
       // compatibility not checked yet
       return;
@@ -121,7 +130,10 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
   /**
    * Update the torch compatibility state and attachs the stream to the preview element.
    */
-  private attachStreamToVideoAndCheckTorch(stream: MediaStream, videoSource: HTMLVideoElement): Promise<HTMLVideoElement> {
+  private attachStreamToVideoAndCheckTorch(
+    stream: MediaStream,
+    videoSource: HTMLVideoElement
+  ): Promise<HTMLVideoElement> {
     this.updateTorchCompatibility(stream);
     return this.attachStreamToVideo(stream, videoSource);
   }
@@ -132,13 +144,14 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * @param stream The media stream used to check.
    */
   private async updateTorchCompatibility(stream: MediaStream): Promise<void> {
-
     const tracks = this.getVideoTracks(stream);
 
     for (const track of tracks) {
       if (await this.isTorchCompatible(track)) {
         this._isTorchAvailable.next(true);
         break;
+      } else {
+        this._isTorchAvailable.next(false);
       }
     }
   }
@@ -151,8 +164,7 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
     let tracks = [];
     try {
       tracks = stream.getVideoTracks();
-    }
-    finally {
+    } finally {
       return tracks || [];
     }
   }
@@ -162,15 +174,16 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * @param track The media stream track that will be checked for compatibility.
    */
   private async isTorchCompatible(track: MediaStreamTrack) {
-
     let compatible = false;
 
     try {
       const imageCapture = new ImageCapture(track);
       const capabilities = await imageCapture.getPhotoCapabilities();
-      compatible = !!capabilities['torch'] || ('fillLightMode' in capabilities && capabilities.fillLightMode.length !== 0);
-    }
-    finally {
+      compatible =
+        !!capabilities['torch'] ||
+        ('fillLightMode' in capabilities &&
+          capabilities.fillLightMode.length !== 0);
+    } finally {
       return compatible;
     }
   }
@@ -179,9 +192,13 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * Apply the torch setting in all received tracks.
    */
   private applyTorchOnTracks(tracks: MediaStreamTrack[], state: boolean) {
-    tracks.forEach(track => track.applyConstraints({
-      advanced: [<any>{ torch: state, fillLightMode: state ? 'torch' : 'none' }]
-    }));
+    tracks.forEach((track) =>
+      track.applyConstraints({
+        advanced: [
+          <any>{ torch: state, fillLightMode: state ? 'torch' : 'none' },
+        ],
+      })
+    );
   }
 
   /**
@@ -198,7 +215,6 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * Cleans any old scan stream value.
    */
   private _cleanScanStream(): void {
-
     if (this.scanStream && !this.scanStream.isStopped) {
       this.scanStream.complete();
     }
@@ -213,8 +229,11 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
    * @param videoElement The video element the decode will be applied.
    * @param delay The delay between decode results.
    */
-  private decodeOnSubject(scan$: BehaviorSubject<ResultAndError>, videoElement: HTMLVideoElement, delay: number): void {
-
+  private decodeOnSubject(
+    scan$: BehaviorSubject<ResultAndError>,
+    videoElement: HTMLVideoElement,
+    delay: number
+  ): void {
     // stops loop
     if (scan$.isStopped) {
       return;
@@ -241,7 +260,10 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
       }
     } finally {
       const timeout = !result ? 0 : delay;
-      setTimeout(() => this.decodeOnSubject(scan$, videoElement, delay), timeout);
+      setTimeout(
+        () => this.decodeOnSubject(scan$, videoElement, delay),
+        timeout
+      );
     }
   }
 
@@ -251,7 +273,9 @@ export class BrowserMultiFormatContinuousReader extends BrowserMultiFormatReader
   private restart(): Observable<ResultAndError> {
     // reset
     // start
-    return this.continuousDecodeFromInputVideoDevice(this.deviceId, this.videoElement);
+    return this.continuousDecodeFromInputVideoDevice(
+      this.deviceId,
+      this.videoElement
+    );
   }
-
 }
